@@ -1,0 +1,67 @@
+{
+  "dashboard": {
+    "title": "Task Manager Microservices Dashboard",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Health Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=~\".*-service\"}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "HTTP Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_count[5m])"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Task Activity Per Project",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum by (project_id) (task_created_total)"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Service Response Time (p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m]))"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "JVM Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{area=\"heap\"}"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Database Connection Pool",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active"
+          }
+        ]
+      }
+    ]
+  }
+}

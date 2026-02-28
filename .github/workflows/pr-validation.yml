@@ -1,0 +1,88 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate:
+    name: Validate PR
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build all services
+        run: |
+          # Eureka Server
+          cd eureka-server && mvn clean package -DskipTests && cd ..
+          
+          # API Gateway
+          cd api-gateway/api-gateway && mvn clean package -DskipTests && cd ../..
+          
+          # User Service
+          cd userservice/userservice && mvn clean package -DskipTests && cd ../..
+          
+          # Project Service
+          cd projectservice/projectservice && mvn clean package -DskipTests && cd ../..
+          
+          # Task Service
+          cd taskservice/taskservice && mvn clean package -DskipTests && cd ../..
+          
+          # Notification Service
+          cd notificationservice/notificationservice && mvn clean package -DskipTests && cd ../..
+          
+          # File Upload Service
+          cd fileuploadservice/fileuploadservice && mvn clean package -DskipTests && cd ../..
+
+      - name: Run tests
+        run: |
+          # Eureka Server
+          cd eureka-server && mvn test && cd ..
+          
+          # API Gateway
+          cd api-gateway/api-gateway && mvn test && cd ../..
+          
+          # User Service
+          cd userservice/userservice && mvn test && cd ../..
+          
+          # Project Service
+          cd projectservice/projectservice && mvn test && cd ../..
+          
+          # Task Service
+          cd taskservice/taskservice && mvn test && cd ../..
+
+      - name: Check Docker Compose
+        run: |
+          docker-compose config
+
+      - name: Validate Kubernetes manifests
+        run: |
+          # Install kubeval
+          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin
+          
+          # Validate manifests
+          kubeval k8s-manifests/infrastructure/*.yaml
+          kubeval k8s-manifests/base/*.yaml
+          kubeval k8s-manifests/monitoring/*.yaml
+
+      - name: Comment PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ All validation checks passed! Ready for review.'
+            })

@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: projectdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mypassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - microservices-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - microservices-network
+
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - microservices-network
+
+  user-service:
+    build: ./userservice/userservice
+    container_name: user-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/projectdb
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - microservices-network
+
+  project-service:
+    build: ./projectservice/projectservice
+    container_name: project-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/projectdb
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - microservices-network
+
+  task-service:
+    build: ./taskservice/taskservice
+    container_name: task-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/projectdb
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8083:8083"
+    depends_on:
+      - postgres
+      - rabbitmq
+      - eureka-server
+    networks:
+      - microservices-network
+
+  notification-service:
+    build: ./notificationservice/notificationservice
+    container_name: notification-service
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8084:8084"
+    depends_on:
+      - rabbitmq
+      - eureka-server
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - microservices-network
+
+  file-upload-service:
+    build: ./fileuploadservice/fileuploadservice
+    container_name: file-upload-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/projectdb
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8085:8085"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - microservices-network
+
+  api-gateway:
+    build: ./api-gateway/api-gateway
+    container_name: api-gateway
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+    networks:
+      - microservices-network
+
+networks:
+  microservices-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

@@ -1,0 +1,13 @@
+# Multi-stage build for Task Service
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY taskservice/taskservice/pom.xml .
+RUN mvn dependency:go-offline
+COPY taskservice/taskservice/src ./src
+RUN mvn clean package -DskipTests
+
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/taskservice-0.0.1-SNAPSHOT.jar app.jar
+EXPOSE 8083
+ENTRYPOINT ["java", "-jar", "app.jar"]
